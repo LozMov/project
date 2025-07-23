@@ -1,0 +1,12 @@
+type,weight
+Homicide,10
+Vehicle Collision or Pedestrian Struck (with Fatality),7
+Vehicle Collision or Pedestrian Struck (with Injury),5
+Theft of Bicycle,2
+Theft of Vehicle,4
+Break and Enter Commercial,5
+Break and Enter Residential/Other,5
+Offence Against a Person,6
+Mischief,1
+Other Theft,2
+Theft from Vehicle,2
