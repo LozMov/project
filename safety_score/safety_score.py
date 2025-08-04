@@ -16,6 +16,11 @@ def normalize(val, min_val, max_val):
         return 50  # default score when data is insufficient
     return round(100 * (1 - (val - min_val) / (max_val - min_val)))
 
+def get_population_with_type(df, neighbourhood, year):
+    if year < 2001 or year > 2024:
+        raise ValueError("Year must be between 2001 and 2024.")
+    data = df[df["neighbourhood"] == neighbourhood]
+    return get_population(df, neighbourhood, year), (year in data["year"].values)
 
 def get_population(df, neighbourhood, year):
     """Get population for a neighbourhood in a specific year.
