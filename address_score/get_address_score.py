@@ -1,32 +1,39 @@
+# get_address_score.py
 import pandas as pd
 
-# Load the dataset
-df = pd.read_csv("House_with_road_distance.csv")
 
-# Drop rows with missing distances
-df = df[df['Driving_Distance_m'].notna()].copy()
+def get_address_score(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute proximity-based address score from a DataFrame containing driving distances.
 
-# Score: 100 for closest, 0 for farthest
-min_dist = df['Driving_Distance_m'].min()
-max_dist = df['Driving_Distance_m'].max()
+    Parameters:
+        df (pd.DataFrame): DataFrame containing at least 'Driving_Distance_m' column.
 
+    Returns:
+        pd.DataFrame: Original DataFrame with added 'Address_Scores' column,
+                      sorted by score descending.
+    """
+    if 'Driving_Distance_m' not in df.columns:
+        raise ValueError(
+            "Input DataFrame must contain 'Driving_Distance_m' column.")
 
-def compute_score(d):
-    if max_dist == min_dist:
-        return 100
-    return 100 * (1 - (d - min_dist) / (max_dist - min_dist))
+    # Drop rows with missing distances
+    df = df[df['Driving_Distance_m'].notna()].copy()
 
+    # Compute min/max distance
+    min_dist = df['Driving_Distance_m'].min()
+    max_dist = df['Driving_Distance_m'].max()
 
-df['Proximity_Score'] = df['Driving_Distance_m'].apply(compute_score)
+    # Score function: 100 for closest, 0 for farthest
+    def compute_score(d):
+        if max_dist == min_dist:
+            return 100
+        return 100 * (1 - (d - min_dist) / (max_dist - min_dist))
 
-# Sort by score (descending)
-df_sorted = df.sort_values(by='Proximity_Score', ascending=False)
+    # Apply score
+    df['Address_Scores'] = df['Driving_Distance_m'].apply(compute_score)
 
-# Print top 20 to console
-print("🏠 Top 20 closest houses:\n")
-print(df_sorted.head(20)[['Address', 'Price',
-      'Driving_Distance_m', 'Proximity_Score']])
+    # Sort by score
+    df = df.sort_values(by='Address_Scores', ascending=False)
 
-# Save full dataframe with score to new CSV
-df_sorted.to_csv("House_with_road_distance_and_score.csv", index=False)
-print("\n📁 Full scored dataset saved to 'House_with_road_distance_and_score.csv'")
+    return df

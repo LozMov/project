@@ -2,3 +2,8 @@ __pycache__/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# Network cache
+cache/
+.DS_Store
+greater_vancouver.graphml
