@@ -4,12 +4,11 @@ import os
 import pandas as pd
 import osmnx as ox
 import networkx as nx
-from tqdm import tqdm
 
 
 def compute_road_distances(start_coords, house_csv_path="house_with_coordinates.csv", graph_filename="greater_vancouver.graphml"):
     """
-    Compute driving distances from a start coordinate to all houses in a CSV.
+    Compute driving distances from a start coordinate to all houses using fast Dijkstra.
 
     Parameters:
         start_coords (tuple): (lat, lon)
@@ -19,7 +18,7 @@ def compute_road_distances(start_coords, house_csv_path="house_with_coordinates.
     Returns:
         pd.DataFrame: Original DataFrame with added 'Driving_Distance_m' column
     """
-    # Load cached graph
+    # Load graph
     graph_path = os.path.abspath(graph_filename)
     if not os.path.exists(graph_path):
         raise FileNotFoundError(
@@ -28,28 +27,33 @@ def compute_road_distances(start_coords, house_csv_path="house_with_coordinates.
     print("Loading Vancouver road network...")
     G = ox.load_graphml(graph_path)
 
-    # Load house data
+    # Load house dataset
     df = pd.read_csv(house_csv_path)
     if not {'Latitude', 'Longitude'}.issubset(df.columns):
         raise ValueError(
             "CSV must contain 'Latitude' and 'Longitude' columns.")
 
-    # Find start node
+    # Get start node from user's coordinates
     start_node = ox.distance.nearest_nodes(
         G, X=start_coords[1], Y=start_coords[0])
 
-    # Compute distances
-    distances = []
-    for _, row in tqdm(df.iterrows(), total=len(df)):
-        try:
-            house_coords = (row['Latitude'], row['Longitude'])
-            house_node = ox.distance.nearest_nodes(
-                G, X=house_coords[1], Y=house_coords[0])
-            length = nx.shortest_path_length(
-                G, start_node, house_node, weight='length')
-        except Exception:
-            length = None
-        distances.append(length)
+    print("Running fast Dijkstra (single-source)...")
+    # Compute shortest paths from start node to all reachable nodes
+    path_lengths = nx.single_source_dijkstra_path_length(
+        G, start_node, weight='length')
 
+    # Vectorized nearest node lookup for all house locations
+    house_nodes = ox.distance.nearest_nodes(
+        G,
+        X=df['Longitude'].values,
+        Y=df['Latitude'].values,
+        return_dist=False
+    )
+
+    # Map each house node to its shortest path length
+    distances = [path_lengths.get(node, None) for node in house_nodes]
+
+    # Save to DataFrame
     df['Driving_Distance_m'] = distances
+
     return df
