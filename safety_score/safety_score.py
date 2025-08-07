@@ -1,5 +1,5 @@
 import pandas as pd
-
+import os
 
 def min_max_normalize(val, min_val, max_val):
     """Min-max normalization of a value.
@@ -18,6 +18,19 @@ def min_max_normalize(val, min_val, max_val):
 
 
 def get_population_with_type(df, neighbourhood, year):
+    """Get population for a neighbourhood in a specific year and check if census data is available for that year.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing population data.
+        neighbourhood (str): The name of the neighbourhood.
+        year (int): The year for which to get the population.
+
+    Raises:
+        ValueError: If the year is not between 2001 and 2024.
+
+    Returns:
+        tuple: A tuple containing the population and a boolean indicating if census data is available for that year.
+    """
     if year < 2001 or year > 2024:
         raise ValueError("Year must be between 2001 and 2024.")
     data = df[df["neighbourhood"] == neighbourhood]
@@ -120,16 +133,27 @@ def calculate_weighted_crime_rate(crime_df, weight_df, population_df, neighbourh
     # Average crime rate over the period
     return total_weighted_crime_rate / (end_year - start_year + 1)
 
+
 def get_safety_score_data(start_year=2021, end_year=2024):
-    # Load data
+    """Get a dataframe with the safety scores for each neighbourhood.
+
+    Args:
+        start_year (int): The starting year of the range.
+        end_year (int): The ending year of the range (inclusive).
+
+    Returns:
+        pd.DataFrame: A dataframe with the safety scores for each neighbourhood.    
+    """
+    # Load data from the same directory
+    pwd = os.getcwd()
+    os.chdir(os.path.dirname(__file__))
     CRIME_WEIGHTS = pd.read_csv("crime_types.csv")
     CRIME_DATA = pd.read_csv("crime_data_clean.csv")
-    CRIME_TYPES = CRIME_WEIGHTS["type"]
     POPULATION = pd.read_csv("population.csv")
     NEIGHBOURHOODS = POPULATION["neighbourhood"].unique()
 
     # Create a new dataframe to store the safety scores
-    safety_scores = pd.DataFrame(columns=["neighbourhood", "weighted_crime_rate"])
+    safety_scores = pd.DataFrame(columns=["Neighborhood", "Weighted Crime Rate"])
     # Calculate the weighted crime rate for each neighbourhood
     for neighbourhood in NEIGHBOURHOODS:
         safety_scores.loc[neighbourhood] = [
@@ -137,19 +161,30 @@ def get_safety_score_data(start_year=2021, end_year=2024):
             calculate_weighted_crime_rate(CRIME_DATA, CRIME_WEIGHTS, POPULATION, neighbourhood, start_year, end_year)
         ]
     # Min-max normalization
-    min_rate = safety_scores["weighted_crime_rate"].min()
-    max_rate = safety_scores["weighted_crime_rate"].max()
-    safety_scores["min_max_normalized_score"] = safety_scores["weighted_crime_rate"].apply(lambda x: min_max_normalize(x, min_rate, max_rate))
+    min_rate = safety_scores["Weighted Crime Rate"].min()
+    max_rate = safety_scores["Weighted Crime Rate"].max()
+    safety_scores["Min-max Normalized Score"] = safety_scores["Weighted Crime Rate"].apply(lambda x: min_max_normalize(x, min_rate, max_rate))
 
     # Z-score normalization
-    mean = safety_scores["weighted_crime_rate"].mean()
-    std = safety_scores["weighted_crime_rate"].std()
-    safety_scores["z_score_normalized_score"] = (safety_scores["weighted_crime_rate"] - mean) / std
-    safety_scores["z_score_normalized_score"] = 100 * (1 - (safety_scores["z_score_normalized_score"] + 3) / 6)
-    safety_scores["z_score_normalized_score"] = safety_scores["z_score_normalized_score"].round().astype(int)
+    mean = safety_scores["Weighted Crime Rate"].mean()
+    std = safety_scores["Weighted Crime Rate"].std()
+    safety_scores["Z-score Normalized Score"] = (safety_scores["Weighted Crime Rate"] - mean) / std
+    safety_scores["Z-score Normalized Score"] = 100 * (1 - (safety_scores["Z-score Normalized Score"] + 3) / 6)
+    safety_scores["Z-score Normalized Score"] = safety_scores["Z-score Normalized Score"].round().astype(int)
+
+    os.chdir(pwd)
 
     return safety_scores
 
 
 if __name__ == "__main__":
     print(get_safety_score_data().head())
+    house_with_address_scores = pd.read_csv("../get_neighborhoods/houses_with_neighborhoods.csv")
+    # Add safety score column to the house_with_address_scores dataframe
+    df = get_safety_score_data()
+    print(df)
+    # Add safety score by neighbourhood names
+    house_with_address_scores["Min-max Normalized Score"] = house_with_address_scores["Neighborhood"].map(df.set_index("Neighborhood")["Min-max Normalized Score"])
+    house_with_address_scores["Z-score Normalized Score"] = house_with_address_scores["Neighborhood"].map(df.set_index("Neighborhood")["Z-score Normalized Score"])
+    print(house_with_address_scores.head(10))
+    # house_with_address_scores.to_csv("house_with_address_scores.csv", index=False)
