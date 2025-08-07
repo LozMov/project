@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def normalize(val, min_val, max_val):
+def min_max_normalize(val, min_val, max_val):
     """Min-max normalization of a value.
 
     Args:
@@ -16,11 +16,13 @@ def normalize(val, min_val, max_val):
         return 50  # default score when data is insufficient
     return round(100 * (1 - (val - min_val) / (max_val - min_val)))
 
+
 def get_population_with_type(df, neighbourhood, year):
     if year < 2001 or year > 2024:
         raise ValueError("Year must be between 2001 and 2024.")
     data = df[df["neighbourhood"] == neighbourhood]
     return get_population(df, neighbourhood, year), (year in data["year"].values)
+
 
 def get_population(df, neighbourhood, year):
     """Get population for a neighbourhood in a specific year.
@@ -118,8 +120,7 @@ def calculate_weighted_crime_rate(crime_df, weight_df, population_df, neighbourh
     # Average crime rate over the period
     return total_weighted_crime_rate / (end_year - start_year + 1)
 
-
-if __name__ == "__main__":
+def get_safety_score_data(start_year=2021, end_year=2024):
     # Load data
     CRIME_WEIGHTS = pd.read_csv("crime_types.csv")
     CRIME_DATA = pd.read_csv("crime_data_clean.csv")
@@ -127,16 +128,28 @@ if __name__ == "__main__":
     POPULATION = pd.read_csv("population.csv")
     NEIGHBOURHOODS = POPULATION["neighbourhood"].unique()
 
-    # Calculate crime rates for each neighbourhood
-    crime_rates = {
-        neighbourhood: calculate_weighted_crime_rate(CRIME_DATA, CRIME_WEIGHTS, POPULATION, neighbourhood, 2021, 2024)
-        for neighbourhood in NEIGHBOURHOODS
-    }
-    min_rate = min(crime_rates.values())
-    max_rate = max(crime_rates.values())
-    normalized_scores = {
-        neighbourhood: normalize(score, min_rate, max_rate)
-        for neighbourhood, score in crime_rates.items()
-    }
+    # Create a new dataframe to store the safety scores
+    safety_scores = pd.DataFrame(columns=["neighbourhood", "weighted_crime_rate"])
+    # Calculate the weighted crime rate for each neighbourhood
+    for neighbourhood in NEIGHBOURHOODS:
+        safety_scores.loc[neighbourhood] = [
+            neighbourhood,
+            calculate_weighted_crime_rate(CRIME_DATA, CRIME_WEIGHTS, POPULATION, neighbourhood, start_year, end_year)
+        ]
+    # Min-max normalization
+    min_rate = safety_scores["weighted_crime_rate"].min()
+    max_rate = safety_scores["weighted_crime_rate"].max()
+    safety_scores["min_max_normalized_score"] = safety_scores["weighted_crime_rate"].apply(lambda x: min_max_normalize(x, min_rate, max_rate))
 
-    print(normalized_scores)
+    # Z-score normalization
+    mean = safety_scores["weighted_crime_rate"].mean()
+    std = safety_scores["weighted_crime_rate"].std()
+    safety_scores["z_score_normalized_score"] = (safety_scores["weighted_crime_rate"] - mean) / std
+    safety_scores["z_score_normalized_score"] = 100 * (1 - (safety_scores["z_score_normalized_score"] + 3) / 6)
+    safety_scores["z_score_normalized_score"] = safety_scores["z_score_normalized_score"].round().astype(int)
+
+    return safety_scores
+
+
+if __name__ == "__main__":
+    print(get_safety_score_data().head())
