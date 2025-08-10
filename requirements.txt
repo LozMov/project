@@ -1,0 +1,13 @@
+pandas
+osmnx
+networkx
+geopandas
+shapely
+requests
+python-dotenv
+matplotlib
+seaborn
+jupyterlab
+openpyxl
+numpy
+tqdm
