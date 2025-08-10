@@ -7,3 +7,4 @@ __pycache__/
 cache/
 .DS_Store
 greater_vancouver.graphml
+top_5_scores.csv
