@@ -134,7 +134,7 @@ def calculate_weighted_crime_rate(crime_df, weight_df, population_df, neighbourh
     return total_weighted_crime_rate / (end_year - start_year + 1)
 
 
-def get_safety_score_data(start_year=2021, end_year=2024):
+def get_safety_score_data(start_year=2016, end_year=2021):
     """Get a dataframe with the safety scores for each neighbourhood.
 
     Args:
@@ -169,7 +169,7 @@ def get_safety_score_data(start_year=2021, end_year=2024):
     mean = safety_scores["Weighted Crime Rate"].mean()
     std = safety_scores["Weighted Crime Rate"].std()
     safety_scores["Z-score Normalized Score"] = (safety_scores["Weighted Crime Rate"] - mean) / std
-    safety_scores["Z-score Normalized Score"] = 100 * (1 - (safety_scores["Z-score Normalized Score"] + 3) / 6)
+    safety_scores["Z-score Normalized Score"] = 50 + -safety_scores["Z-score Normalized Score"] * 50 / 3
     safety_scores["Z-score Normalized Score"] = safety_scores["Z-score Normalized Score"].round().astype(int)
 
     os.chdir(pwd)
